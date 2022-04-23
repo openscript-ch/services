@@ -1,0 +1,44 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+
+packages:
+ - apt-transport-https
+ - ca-certificates
+ - curl
+ - gnupg
+ - lsb-release
+
+runcmd:
+ - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+ - echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+ - apt update && apt install -y docker-ce docker-ce-cli containerd.io
+ - mkdir -p /usr/local/lib/docker/cli-plugins
+ - curl -SL https://github.com/docker/compose/releases/download/v2.4.1/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
+ - chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+ - useradd --create-home --shell /bin/rbash deploy
+ - mkdir /home/deploy/.ssh
+ - echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCeW1LxwN6nlJre3SkQgpe6e5t1NmjUe7apCSGJKG5xAkhIjSiNv+xt0q5IepTD7mfe6MAkTWx+z8Q0cBJD0SW04Ag2e1+GwUo6lotCavOKHFXkYYHq3FakV/JkXT3yuzROVqGWMZ0D8F0dZTsok66Ptg2ccXUU4y5em+ubxVo2/hzsU6yGFFQl5FMj444JqOqyGdFnB7vU0dbf7XSVbb4j+hoVYO+Y9ompgWOjjPFsXPkqamSgQDUe0x5vMkbNBnr9uGdB6nFZ5f55HIQUs9Qvd6jETzv6MWYuF0E0oHrh1Vy3Z27u8y2eob+o9H7CXUTw/UF8rH3wMadaP4vdCdBOk1Q82eMpZM8BdiiQoX30HU7KJgc/oW+nb9Aa6k3jV1YwnTj6s36nbOTuwuWZ1eu4ru1B6HtRpTGp+p9oL3DUhqs+VGtKU5mu5zCXRtn/xtHqJx2J7+dGKUVlYuHnHHS/f+JckJRbEgN/sK/BHlfgrRiQ+SLa9GhJm3rm2/2NBCM= deploy@openscript" >> /home/deploy/.ssh/authorized_keys
+ - chown -R deploy:deploy /home/deploy/.ssh
+ - chmod 700 /home/deploy/.ssh
+ - chmod 600 /home/deploy/.ssh/authorized_keys
+ - mkdir /home/deploy/scripts/
+ - ln -s /usr/bin/sudo /home/deploy/scripts/sudo
+ - sed -i 's/Subsystem .\+sftp.\+/Subsystem sftp internal-sftp/' /etc/ssh/sshd_config
+ - sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+ - sed -i 's/\#Port 22/Port 22022/' /etc/ssh/sshd_config
+ - systemctl restart sshd 
+
+write_files:
+ - content: |
+     #/bin/bash
+     cd /srv/lms-services
+     docker compose -f docker-compose.yml pull
+     docker compose -f docker-compose.yml up -d --remove-orphans
+     docker image prune -a -f
+   path: /home/deploy/scripts/update-docker.sh
+   permissions: '0755'
+ - content: |
+     deploy ALL=NOPASSWD: /home/deploy/scripts/update-docker.sh
+   path: /etc/sudoers
+   append: true
