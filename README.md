@@ -2,9 +2,9 @@
 
 This is an umbrella ☂️ project for the services we use as our infrastructure. All services are living inside Docker containers.
 
-- [Development operations](../devops-services/)
-- [Identity and Access Management](../iam-services/)
-- [Learning management system](../lms-services/)
+- [Development operations](https://github.com/openscript-ch/devops-services/)
+- [Identity and Access Management](https://github.com/openscript-ch/lms-services)
+- [Learning management system](https://github.com/openscript-ch/lms-services/)
 
 ## Host set up
 
